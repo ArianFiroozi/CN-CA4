@@ -6,7 +6,10 @@ int main() {
     Client client;  
 
     client.performHandshake();
-    client.sendData();
+
+    for (int i=0;i<5;i++)
+        client.sendData();
+    client.terminateConnection();
 
     return 0;
 }
@@ -26,7 +29,7 @@ Client::Client()
 
 void Client::sendSyn()
 {
-    send(mySocket, "SYN", 4, 0);
+    send(mySocket, "SYN", 42, 0);
     cout << "SYN sent\n";
 }
 
@@ -43,7 +46,7 @@ bool Client::receiveSynAck()
 
 void Client::sendAck()
 {
-    send(mySocket, "ACK", 4, 0);
+    send(mySocket, "ACK", 42, 0);
     cout << "ACK sent, connection established\n";
     connectionEstablished=true;
 }
@@ -78,4 +81,17 @@ void Client::sendData()
 Client::~Client()
 {
     close(mySocket);
+}
+
+void Client::terminateConnection()
+{
+    if (!connectionEstablished)
+    {
+        cout << "No connection found!\n";
+        return;
+    }
+
+    string data = "termination";
+    send(mySocket, data.c_str(), data.size(), 0);
+    cout << "Termination sent!\n";
 }

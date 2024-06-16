@@ -22,4 +22,5 @@ public:
 
     void performHandshake();
     void sendData();
+    void terminateConnection();
 };

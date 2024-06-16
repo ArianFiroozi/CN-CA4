@@ -4,8 +4,12 @@ using namespace std;
 
 int main() {
     Server server;
-    server.start();
 
+    std::thread t([&server]() {
+        server.start();
+    });
+
+    t.join();
     return 0;
 }
 
@@ -27,36 +31,41 @@ Server::~Server()
 
 void Server::start()
 {
-    listen(mySocket, 5);
+    listen(mySocket, 42);
 
     while (true) {
-        int client_socket = accept(mySocket, NULL, NULL);
-        threads.push_back(std::thread(handleClient, client_socket));
+        int clientSocket = accept(mySocket, NULL, NULL);
+        threads.push_back(std::thread(handleClient, clientSocket));
     }
 }
 
 
-void handleClient(int client_socket) {
+void handleClient(int clientSocket) {
     char buffer[1024] = {0};
 
-    read(client_socket, buffer, 1024);
+    read(clientSocket, buffer, 1024);
     if (strcmp(buffer, "SYN") == 0) {
         std::cout << "SYN received\n";
 
-        send(client_socket, "SYN-ACK", 7, 0);
+        send(clientSocket, "SYN-ACK", 7, 0);
         std::cout << "SYN-ACK sent\n";
 
         memset(buffer, 0, 1024);
-        read(client_socket, buffer, 1024);
+        read(clientSocket, buffer, 1024);
         if (strcmp(buffer, "ACK") == 0) {
             std::cout << "ACK received, connection established\n";
 
-            memset(buffer, 0, 1024);
-            read(client_socket, buffer, 1024);
-            std::cout << "Received data: " << buffer << "\n";
-            send(client_socket, "Packet-ACK", 11, 0);
+            while (true)
+            {
+                memset(buffer, 0, 1024);
+                read(clientSocket, buffer, 1024);
+                if (strcmp(buffer, "termination")==0)
+                    break;
+                std::cout << "Received data: " << buffer << "\n";
+                send(clientSocket, "Packet-ACK", 11, 0);
+            }
         }
     }
 
-    close(client_socket);
+    close(clientSocket);
 }

@@ -14,7 +14,6 @@ private:
     int mySocket;
     std::vector<std::thread> threads;
 
-
 public:
     Server();
     ~Server();
