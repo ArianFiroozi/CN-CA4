@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <cstring>
 
+using namespace std;
+
 int main() {
     int client_socket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server_address;
@@ -14,18 +16,24 @@ int main() {
     connect(client_socket, (struct sockaddr*)&server_address, sizeof(server_address));
 
     send(client_socket, "SYN", 4, 0);
-    std::cout << "SYN sent\n";
+    cout << "SYN sent\n";
 
     char buffer[1024] = {0};
     read(client_socket, buffer, 1024);
     if (strcmp(buffer, "SYN-ACK") == 0) {
-        std::cout << "SYN-ACK received\n";
+        cout << "SYN-ACK received\n";
 
         send(client_socket, "ACK", 4, 0);
-        std::cout << "ACK sent, connection established\n";
+        cout << "ACK sent, connection established\n";
 
-        std::string data = "Hello, server!";
+        string data = "Hello, server!";
         send(client_socket, data.c_str(), data.size(), 0);
+        cout << "Packet sent\n";
+    
+        memset(buffer, 0, 1024);
+        read(client_socket, buffer, 1024);
+
+        cout << "received ACK:" << buffer << endl;
     }
 
     close(client_socket);

@@ -24,6 +24,7 @@ void handle_client(int client_socket) {
             memset(buffer, 0, 1024);
             read(client_socket, buffer, 1024);
             std::cout << "Received data: " << buffer << "\n";
+            send(client_socket, "Packet-ACK", 11, 0);
         }
     }
 
