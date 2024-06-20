@@ -7,7 +7,7 @@ int main() {
 
     client.performHandshake();
 
-    client.generateData();
+    client.generateData(100);
     client.sendData();
 
     return 0;
@@ -27,6 +27,7 @@ Client::Client()
 
     cwnd = 1;
     ssthresh = 5;
+    phase = SLOW_START;
 }
 
 void Client::sendSyn()
@@ -66,7 +67,7 @@ void Client::generateData(int size)
 {
     for (int i=0;i<size; i++)
     {
-        data.push_back("this is a packet!");
+        data.push_back(to_string(i) + "this is a packet!");
     }
 }
 
@@ -79,7 +80,7 @@ void Client::sendData()
     }
 
     int lastPacketSent = 0;
-    int lastAck = -1;
+    int lastAck = 0;
     int drops = 0;
 
     for (int i=0;i<cwnd;i++)
@@ -91,17 +92,28 @@ void Client::sendData()
 
     while (true)
     {
+        usleep(1000);
         memset(buffer, 0, 1024);
         read(mySocket, buffer, 1024);
 
         cout << "received ACK:" << buffer << endl;
-        int newAck = buffer[4] - 48;
+        buffer[0]='0';
+        buffer[1]='0';
+        buffer[2]='0';
+        int newAck = stoi(buffer);
+
+        if (newAck == int(data.size()))
+        {
+            terminateConnection();
+            break;
+        }
 
         //TODO:implement partial ack
         if (newAck == lastAck+1 || ++drops < 3)
         {
+            // cout <<"newack:"<<newAck <<"cwnd"<<cwnd<<endl;
             lastAck++;
-            if (phase = SLOW_START)
+            if (phase == SLOW_START)
             {
                 if (cwnd*2<=ssthresh)
                 {
@@ -116,7 +128,7 @@ void Client::sendData()
                 else
                     phase = CONGESTION_AVOIDANCE;
             }
-            if (phase = CONGESTION_AVOIDANCE)
+            if (phase == CONGESTION_AVOIDANCE)
             {
                 send(mySocket, data[lastPacketSent].c_str(), data.size(), 0);
                 cout << "Packet sent\n";

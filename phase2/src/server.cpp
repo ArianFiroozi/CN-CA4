@@ -42,7 +42,7 @@ void Server::start()
 
 void handleClient(int clientSocket) {
     char buffer[1024] = {0};
-
+    int lastPacketReceived = -1;
     read(clientSocket, buffer, 1024);
     if (strcmp(buffer, "SYN") == 0) {
         std::cout << "SYN received\n";
@@ -62,7 +62,14 @@ void handleClient(int clientSocket) {
                 if (strcmp(buffer, "termination")==0)
                     break;
                 std::cout << "Received data: " << buffer << "\n";
-                send(clientSocket, "Packet-ACK", 11, 0);
+
+                if (lastPacketReceived + 1 == stoi(buffer))
+                    lastPacketReceived++;
+                
+                string ackStr = "";
+                ackStr.append("ACK");
+                ackStr.append(to_string(lastPacketReceived+1));
+                send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
             }
         }
     }
