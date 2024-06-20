@@ -44,20 +44,35 @@ int main() {
     // Receive file contents
     char buffer[1536] = {0};
     int n;
+    bool packCorrect = true;
     for (int i=1;(n=recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientAddr, &addrLen))>0;i++)
     {
-        std::cout << "newPacket\n";
-        file.write(buffer, n);
+        std::cout << "newPacket:" << buffer[1535] << "\n";
+        file.write(buffer, n-1);
+
+        try { 
+            if (stoi(string(1, buffer[1535])) != i%4)
+            {
+                packCorrect = false;
+                cout << "packet corrupt!" <<endl;
+            }
+        }
+        catch(invalid_argument e)
+        {
+            //terminated
+            break;
+        }
+
         memset(buffer, 0, sizeof(buffer));
 
         if (!(i%WSIZE))
         {
             std::cout << "sending ack\n";
-            buffer[0] = 'a';
-            buffer[1] = 'c';
-            buffer[2] = '\0';
+            buffer[0] = packCorrect ? '0' : '1';
+            buffer[1] = '\0';
             sendto(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
             memset(buffer, 0, sizeof(buffer));
+            packCorrect=true;
         }
     }
 
