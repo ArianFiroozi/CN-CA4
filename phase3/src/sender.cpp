@@ -1,45 +1,32 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <string>
 #include <cstring>
-#include <cstdlib>
-#include <cstdio>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
 #define PORT 8080
 
-int main()
-{
-    int sock = 0;
-    struct sockaddr_in serv_addr;
-    char const *filename = "src/music.mp3";
-    std::ifstream file(filename, std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "Could not open file " << filename << std::endl;
+int main() {
+    // Create a UDP socket
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "Error creating socket" << std::endl;
         return 1;
     }
 
-    // Create socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        std::cerr << "Socket creation error" << std::endl;
-        return 1;
-    }
+    struct sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-
-    // if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0)
-    // {
-    //     std::cerr << "Invalid address!" << std::endl;
-    //     return 1;
-    // }
-
-    // Connect to server
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-        std::cerr << "Connection Failed" << std::endl;
+    // Read the MP3 file
+    std::ifstream file("src/music.mp3", std::ios::binary);
+    if (!file) {
+        std::cerr << "Error opening file" << std::endl;
         return 1;
     }
 
@@ -47,15 +34,16 @@ int main()
     char buffer[1536] = {0};
     while (file.read(buffer, sizeof(buffer)))
     {
-        send(sock, buffer, sizeof(buffer), 0);
+        // send(sock, buffer, sizeof(buffer), 0);
+        sendto(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
         memset(buffer, 0, sizeof(buffer));
     }
-    send(sock, buffer, strlen(buffer), 0);
+    sendto(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
 
     std::cout << "File sent successfully" << std::endl;
 
-    // Close socket and file
-    close(sock);
-    file.close();
+
+    close(sockfd);
+
     return 0;
 }

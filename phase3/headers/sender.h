@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,17 +26,11 @@ private:
     int ssthresh;
     int cwnd;
 
-    void sendSyn();
-    bool receiveSynAck();
-    void sendAck();
     char buffer[1024] = {0};
 
 public:
     Client();
     ~Client();
 
-    void performHandshake();
     void sendData();
-    void terminateConnection();
-    void generateData(int);
 };
