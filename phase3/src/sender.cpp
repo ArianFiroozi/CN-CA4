@@ -1,14 +1,24 @@
 #include "../headers/sender.h"
 
+#include <chrono>
+
 #define PORT 8080
 #define WSIZE 4
 
 using namespace std;
 
 int main() {
+
     Sender sender;
     sender.openFile();
+
+    auto start = chrono::high_resolution_clock::now();
+    
     sender.sendData();
+
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    cout <<"transport time was: " << duration.count() << endl;
 
     return 0;
 }

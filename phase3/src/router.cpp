@@ -1,5 +1,8 @@
 #include "../headers/router.h"
 
+#include <cstdlib>
+#include <chrono>
+
 #define PORT_SENDER 8080
 #define PORT_RECEIVER 8081
 #define WSIZE 4
@@ -8,9 +11,13 @@ using namespace std;
 
 int main() 
 {
+    auto start = chrono::high_resolution_clock::now();
     Router router;
     router.forward();
-    
+
+    auto end = chrono::high_resolution_clock::now();
+    chrono::duration<double> duration = end - start;
+    cout <<"transport time was: " << duration.count() << endl;
     return 0;
 }
 
@@ -41,6 +48,8 @@ void Router::forward()
     {
         recvfrom(senderSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, &addrLen);
         cout << "forwarding new packet\n";
+            if (rand()%100<3)
+                buffer[1535] = '5';
         sendto(receiverSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
         memset(buffer, 0, sizeof(buffer));
 
@@ -49,6 +58,8 @@ void Router::forward()
             socklen_t recAddrLen = sizeof(receiverAddr);
             recvfrom(receiverSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, &recAddrLen);
             cout << "forwarding ack\n";
+
+
             sendto(senderSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
             memset(buffer, 0, sizeof(buffer));
         }
