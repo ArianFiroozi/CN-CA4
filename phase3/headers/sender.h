@@ -1,36 +1,37 @@
+#ifndef RECEIVER_H
+#define RECEIVER_H
+
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
-#include <cstring>
+#include <algorithm>
 
-#include <vector>
-
-
-enum Phase 
-{
-    SLOW_START, 
-    CONGESTION_AVOIDANCE, 
-    FAST_RETRANSMITION, 
-    FAST_RECOVERY
-};
-
-class Client
+class Sender
 {
 private:
-    Phase phase;
-    std::vector<std::string> data;
-
     int mySocket;
-    bool connectionEstablished;
-    int ssthresh;
-    int cwnd;
-
-    char buffer[1024] = {0};
+    char buffer[1536] = {0};
+    struct sockaddr_in myAddr, routerAddr;
+    std::vector<char*> window;
+    char window1[1536];
+    char window2[1536];
+    char window3[1536];
+    char window4[1536];
+    std::ifstream file;
+    struct sockaddr_in receiverAddr;
 
 public:
-    Client();
-    ~Client();
+    Sender();
+    ~Sender();
 
+    void openFile();
     void sendData();
 };
+
+#endif

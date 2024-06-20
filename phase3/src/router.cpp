@@ -1,13 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <unistd.h>
+#include "../headers/router.h"
 
 #define PORT_SENDER 8080
 #define PORT_RECEIVER 8081
@@ -15,53 +6,59 @@
 
 using namespace std;
 
-int main() {
-    // Create a UDP socket to receive from sender
-    int sockfd_sender = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd_sender < 0) {
-        std::cerr << "Error creating sender socket" << std::endl;
-        return 1;
-    }
+int main() 
+{
+    Router router;
+    router.forward();
+    
+    return 0;
+}
 
-    struct sockaddr_in senderAddr, receiverAddr;
+Router::Router()
+{
+    senderSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (senderSocket < 0)
+        cerr << "error creating sender socket\n";
+
     senderAddr.sin_family = AF_INET;
     senderAddr.sin_port = htons(PORT_SENDER);
     senderAddr.sin_addr.s_addr = INADDR_ANY;
-    bind(sockfd_sender, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
-    int sockfd_receiver = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd_receiver < 0) {
-        std::cerr << "Error creating receiver socket" << std::endl;
-        return 1;
-    }
+    bind(senderSocket, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
+    
+    receiverSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (receiverSocket < 0)
+        cerr << "error creating receiver socket\n";
+    
     receiverAddr.sin_family = AF_INET;
     receiverAddr.sin_port = htons(PORT_RECEIVER);
     receiverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+}
 
-    // Receive the MP3 file from the sender and forward it
-    char buffer[1536] = {0};
-
+void Router::forward()
+{
     socklen_t addrLen = sizeof(senderAddr);
     for (int i=1;true;i++)
     {
-        recvfrom(sockfd_sender, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, &addrLen);
-        std::cout << "forwarding new packet\n";
-        sendto(sockfd_receiver, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
+        recvfrom(senderSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, &addrLen);
+        cout << "forwarding new packet\n";
+        sendto(receiverSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
         memset(buffer, 0, sizeof(buffer));
 
         if (!(i%WSIZE))
         {   
             socklen_t recAddrLen = sizeof(receiverAddr);
-            recvfrom(sockfd_receiver, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, &recAddrLen);
-            std::cout << "forwarding ack\n";
-            sendto(sockfd_sender, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
+            recvfrom(receiverSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, &recAddrLen);
+            cout << "forwarding ack\n";
+            sendto(senderSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
             memset(buffer, 0, sizeof(buffer));
         }
     }
 
-    std::cout << "File received successfully" << std::endl;
+    cout << "file forwarder successfully\n";
+}
 
-    close(sockfd_sender);
-    close(sockfd_receiver);
-
-    return 0;
+Router::~Router()
+{
+    close(senderSocket);
+    close(receiverSocket);
 }

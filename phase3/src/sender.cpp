@@ -1,13 +1,4 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <algorithm>
+#include "../headers/sender.h"
 
 #define PORT 8080
 #define WSIZE 4
@@ -15,35 +6,38 @@
 using namespace std;
 
 int main() {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        std::cerr << "Error creating socket" << std::endl;
-        return 1;
-    }
-    struct sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    Sender sender;
+    sender.openFile();
+    sender.sendData();
 
+    return 0;
+}
 
-    std::ifstream file("src/music.mp3", std::ios::binary);
-    if (!file) {
-        std::cerr << "Error opening file" << std::endl;
-        return 1;
-    }
+Sender::Sender()
+{
+    mySocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (mySocket < 0)
+        cerr << "error creating socket\n";
 
-    // Send
-    vector<char*> window;
-    char window1[1536];
-    char window2[1536];
-    char window3[1536];
-    char window4[1536];
+    receiverAddr.sin_family = AF_INET;
+    receiverAddr.sin_port = htons(PORT);
+    receiverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
     window.push_back(window1);
     window.push_back(window2);
     window.push_back(window3);
     window.push_back(window4);
+}
 
-    char buffer[1536] = {0};
+void Sender::openFile()
+{
+    file = ifstream("src/music.mp3", ios::binary);
+    if (!file)
+        cerr << "Error opening file" << endl;
+}
+
+void Sender::sendData()
+{
     for (int i=1; file.read(buffer, sizeof(buffer)-1); i++)
     {
         buffer[1535] = i%4==1?'1':i%4==2?'2':i%4==3?'3':'0';
@@ -51,35 +45,35 @@ int main() {
         for (int j=0;j<1536;j++)
             window[(i+3)%4][j] = buffer[j];
 
-        sendto(sockfd, window[(i+3)%4], sizeof(buffer), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+        sendto(mySocket, window[(i+3)%4], sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
         memset(buffer, 0, sizeof(buffer));
         
 
         if (!(i%WSIZE))
         {
-            socklen_t serverSock = sizeof(serverAddr);
-            recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&serverAddr, &serverSock);
-            std::cout << "received ack:" <<buffer<<endl;
-            // cout<<buffer[1535]<<window[0][1535]<<window[1][1535]<<window[2][1535]<<window[3][1535]<<endl;
+            socklen_t receiverSock = sizeof(receiverAddr);
+            recvfrom(mySocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, &receiverSock);
+            cout << "received ack:" <<buffer<<endl;
 
             while (stoi(string(1, buffer[0])))
             {
                 for (int j=0;j<WSIZE;j++)
-                    sendto(sockfd, window[j], 1536, 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+                    sendto(mySocket, window[j], 1536, 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
                 
                 memset(buffer, 0, sizeof(buffer));
-                recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&serverAddr, &serverSock);
+                recvfrom(mySocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, &receiverSock);
             }
             memset(buffer, 0, sizeof(buffer));
             window.clear();
         }
     }
-    sendto(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+    sendto(mySocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
 
-    std::cout << "File sent successfully" << std::endl;
+    cout << "file sent successfully, terminating...\n";
+}
 
-
-    close(sockfd);
-
-    return 0;
+Sender::~Sender()
+{
+    close(mySocket);
+    file.close();    
 }
