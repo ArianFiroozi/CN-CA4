@@ -9,7 +9,7 @@
 
 #include <unistd.h>
 
-#define PORT 8080
+#define PORT 8081
 
 int main() {
     // Create a UDP socket
@@ -51,7 +51,6 @@ int main() {
     std::cout << "File received successfully" << std::endl;
 
     file.close();
-
     close(sockfd);
 
     return 0;

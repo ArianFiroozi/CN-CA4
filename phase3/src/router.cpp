@@ -1,117 +1,59 @@
-#include "../headers/router.h"
-
+#include <iostream>
 #include <fstream>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-using namespace std;
+#include <unistd.h>
 
+#define PORT_SENDER 8080
+#define PORT_RECEIVER 8081
 
-void makeConnection()
-{
-    
-}
-
-int main()
-{
-    int senderPort = 8080;
-    int receiverPort = 8081;
-
-
-    int sock = 1;
-    struct sockaddr_in serv_addr;
-
-    // Create socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    {
-        std::cerr << "Socket creation error" << std::endl;
+int main() {
+    // Create a UDP socket to receive from sender
+    int sockfd_sender = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd_sender < 0) {
+        std::cerr << "Error creating sender socket" << std::endl;
         return 1;
     }
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(receiverPort);
+    struct sockaddr_in senderAddr, receiverAddr;
+    senderAddr.sin_family = AF_INET;
+    senderAddr.sin_port = htons(PORT_SENDER);
+    senderAddr.sin_addr.s_addr = INADDR_ANY;
 
-    // Connect to server
-    cout << "connecting\n";
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-        std::cerr << "Connection Failed" << std::endl;
+    // Bind the sender socket to the port
+    bind(sockfd_sender, (struct sockaddr*)&senderAddr, sizeof(senderAddr));
+
+    // Create a UDP socket to send to receiver
+    int sockfd_receiver = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd_receiver < 0) {
+        std::cerr << "Error creating receiver socket" << std::endl;
         return 1;
     }
 
-    cout << "connected\n";
+    receiverAddr.sin_family = AF_INET;
+    receiverAddr.sin_port = htons(PORT_RECEIVER);
+    receiverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-
-    // Create server socket
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        std::cerr << "Socket creation error" << std::endl;
-        return 1;
-    }
-
-    // Attach socket to the port
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    {
-        std::cerr << "Setsockopt error" << std::endl;
-        return 1;
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(senderPort);
-
-    // Bind the socket to the address and port
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0)
-    {
-        std::cerr << "Bind failed" << std::endl;
-        return 1;
-    }
-
-    // Listen for incoming connections
-    if (listen(server_fd, 3) < 0)
-    {
-        std::cerr << "Listen error" << std::endl;
-        return 1;
-    }
-
-    // Accept incoming connection
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                       (socklen_t*)&addrlen))<0)
-    {
-        std::cerr << "Accept error" << std::endl;
-        return 1;
-    }
-
-
-    // Receive file contents
+    // Receive the MP3 file from the sender
     char buffer[1536] = {0};
     int n;
-    while ((n = read(new_socket, buffer, sizeof(buffer))) > 0)
+    socklen_t addrLen = sizeof(senderAddr);
+    while ((n = recvfrom(sockfd_sender, buffer, sizeof(buffer), 0, (struct sockaddr*)&senderAddr, &addrLen)) > 0)
     {
         std::cout << "newPacket\n";
-        
+        sendto(sockfd_receiver, buffer, sizeof(buffer), 0, (struct sockaddr*)&receiverAddr, sizeof(receiverAddr));
         memset(buffer, 0, sizeof(buffer));
     }
 
     std::cout << "File received successfully" << std::endl;
 
-    // Close sockets and file
-    close(new_socket);
-    close(server_fd);
+    close(sockfd_sender);
+    close(sockfd_receiver);
+
     return 0;
 }
