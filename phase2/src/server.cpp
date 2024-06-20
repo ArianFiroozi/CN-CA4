@@ -1,4 +1,5 @@
 #include "../headers/server.h"
+#include <cstdlib>
 
 using namespace std;
 
@@ -61,6 +62,16 @@ void handleClient(int clientSocket) {
                 read(clientSocket, buffer, 1024);
                 if (strcmp(buffer, "termination")==0)
                     break;
+
+                if (rand() % 100 > 90) //drop randomley to see the protocol
+                {
+                    string ackStr = "";
+                    ackStr.append("ACK");
+                    ackStr.append(to_string(lastPacketReceived+1));
+                    send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
+                    continue;
+                }
+
                 std::cout << "Received data: " << buffer << "\n";
 
                 if (lastPacketReceived + 1 == stoi(buffer))

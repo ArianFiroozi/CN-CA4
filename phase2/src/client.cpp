@@ -25,9 +25,10 @@ Client::Client()
 
     connect(mySocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
 
-    cwnd = 1;
-    ssthresh = 5;
+    cwnd = 4;
+    ssthresh = 10;
     phase = SLOW_START;
+    cout << "phase changed to slow start\n";
 }
 
 void Client::sendSyn()
@@ -92,7 +93,7 @@ void Client::sendData()
 
     while (true)
     {
-        usleep(1000);
+        // usleep(1000);
         memset(buffer, 0, 1024);
         read(mySocket, buffer, 1024);
 
@@ -111,7 +112,6 @@ void Client::sendData()
         //TODO:implement partial ack
         if (newAck == lastAck+1 || ++drops < 3)
         {
-            // cout <<"newack:"<<newAck <<"cwnd"<<cwnd<<endl;
             lastAck++;
             if (phase == SLOW_START)
             {
@@ -126,7 +126,10 @@ void Client::sendData()
                     cwnd *= 2;
                 }
                 else
+                {
                     phase = CONGESTION_AVOIDANCE;
+                    cout << "phase changed to congestion avoidance\n";
+                }
             }
             if (phase == CONGESTION_AVOIDANCE)
             {
@@ -137,16 +140,21 @@ void Client::sendData()
             }
         }
         else {
+            phase = FAST_RECOVERY;
+            cout << "phase changed to fast recovery\n";
+
             lastAck = newAck;
             drops = 0;
-            phase = CONGESTION_AVOIDANCE;
             ssthresh = cwnd / 2;
             lastPacketSent = newAck;
-            cwnd /= 2;
+            cwnd = ssthresh;
 
             send(mySocket, data[lastPacketSent].c_str(), data.size(), 0);
             cout << "Packet sent\n";
             lastPacketSent++;
+
+            phase = CONGESTION_AVOIDANCE;
+            cout << "phase changed to congestion avoidance\n";
         }
     }
 
