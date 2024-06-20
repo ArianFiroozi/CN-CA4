@@ -9,7 +9,10 @@
 
 #include <unistd.h>
 
+using namespace std;
+
 #define PORT 8081
+#define WSIZE 4
 
 int main() {
     // Create a UDP socket
@@ -41,11 +44,21 @@ int main() {
     // Receive file contents
     char buffer[1536] = {0};
     int n;
-    while ((n = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientAddr, &addrLen)) > 0)
+    for (int i=1;(n=recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientAddr, &addrLen))>0;i++)
     {
         std::cout << "newPacket\n";
         file.write(buffer, n);
         memset(buffer, 0, sizeof(buffer));
+
+        if (!(i%WSIZE))
+        {
+            std::cout << "sending ack\n";
+            buffer[0] = 'a';
+            buffer[1] = 'c';
+            buffer[2] = '\0';
+            sendto(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
+            memset(buffer, 0, sizeof(buffer));
+        }
     }
 
     std::cout << "File received successfully" << std::endl;
