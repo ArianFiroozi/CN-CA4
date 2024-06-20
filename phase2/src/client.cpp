@@ -93,7 +93,6 @@ void Client::sendData()
 
     while (true)
     {
-        // usleep(1000);
         memset(buffer, 0, 1024);
         read(mySocket, buffer, 1024);
 
@@ -101,6 +100,18 @@ void Client::sendData()
         buffer[0]='0';
         buffer[1]='0';
         buffer[2]='0';
+        if (buffer[3] == 'P')
+        {
+            cout << "received partial ack, fast retransmit!\n";
+            buffer[3] = '0';
+            int newAck = stoi(buffer);
+            send(mySocket, data[newAck].c_str(), data.size(), 0);
+            drops--;
+            // lastPacketSent++;
+            // cwnd++;
+            continue;
+        }
+
         int newAck = stoi(buffer);
 
         if (newAck == int(data.size()))
@@ -109,9 +120,11 @@ void Client::sendData()
             break;
         }
 
-        //TODO:implement partial ack
+        
         if (newAck == lastAck+1 || ++drops < 3)
         {
+            drops = (newAck == lastAck+1) ? 0 : drops; // reset if partial
+
             lastAck++;
             if (phase == SLOW_START)
             {

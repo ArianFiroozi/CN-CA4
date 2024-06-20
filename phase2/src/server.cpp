@@ -44,6 +44,8 @@ void Server::start()
 void handleClient(int clientSocket) {
     char buffer[1024] = {0};
     int lastPacketReceived = -1;
+    bool waitingForPartial = false;
+
     read(clientSocket, buffer, 1024);
     if (strcmp(buffer, "SYN") == 0) {
         std::cout << "SYN received\n";
@@ -69,18 +71,42 @@ void handleClient(int clientSocket) {
                     ackStr.append("ACK");
                     ackStr.append(to_string(lastPacketReceived+1));
                     send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
+                    cout << "dropped data!\n";
                     continue;
                 }
 
                 std::cout << "Received data: " << buffer << "\n";
 
                 if (lastPacketReceived + 1 == stoi(buffer))
+                {
+                    if (waitingForPartial)
+                    {
+                        lastPacketReceived++;
+                        waitingForPartial = false;
+                    }
+
+                    string ackStr = "";
+                    ackStr.append("ACK");
+                    ackStr.append(to_string(lastPacketReceived+1));
+                    send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
                     lastPacketReceived++;
-                
-                string ackStr = "";
-                ackStr.append("ACK");
-                ackStr.append(to_string(lastPacketReceived+1));
-                send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
+                }
+                else if (lastPacketReceived + 2 <= stoi(buffer))
+                {
+                    string ackStr = "";
+                    ackStr.append("ACKP");
+                    ackStr.append(to_string(lastPacketReceived+1));
+                    send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
+                    waitingForPartial = true;
+                    cout  << "sended partial ack!\n";
+                }
+                else 
+                {
+                    string ackStr = "";
+                    ackStr.append("ACK");
+                    ackStr.append(to_string(lastPacketReceived+1));
+                    send(clientSocket, ackStr.c_str() , ackStr.size(), 0);
+                }
             }
         }
     }
